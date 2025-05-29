@@ -19,9 +19,11 @@ const {
     DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
-    makeInMemoryStore,
     downloadContentFromMessage
 } = require('@whiskeysockets/baileys');
+
+// Import makeInMemoryStore from the correct location
+const { makeInMemoryStore } = require('@whiskeysockets/baileys/lib/Store');
 
 // Create Express app for web interface
 const app = express();
