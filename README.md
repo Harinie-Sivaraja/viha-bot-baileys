@@ -1,6 +1,6 @@
 # VihaCandlesAndGiftings WhatsApp Bot
 
-A WhatsApp bot for VihaCandlesAndGiftings built with Baileys, designed to handle customer inquiries about return gifts.
+A WhatsApp bot for VihaCandlesAndGiftings built with Baileys, designed to handle customer inquiries about return gifts. Updated with improved MongoDB authentication handling.
 
 ## Features
 
