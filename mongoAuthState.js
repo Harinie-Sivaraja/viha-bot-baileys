@@ -1,6 +1,5 @@
 const { MongoClient } = require('mongodb');
-const { proto } = require('@whiskeysockets/baileys');
-const { initAuthCreds } = require('@whiskeysockets/baileys/lib/Utils/auth');
+const { proto, initAuthCreds } = require('@whiskeysockets/baileys');
 
 /**
  * MongoDB-based auth state for Baileys
