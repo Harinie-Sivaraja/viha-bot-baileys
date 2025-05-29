@@ -5,11 +5,17 @@ const fs = require('fs');
 const path = require('path');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
+
+// Import MongoDB auth state provider
+const { useMongoDBAuthState, useMongoDBUserState } = require('./mongoAuthState');
 
 // Import Baileys
 const {
     default: makeWASocket,
-    useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
@@ -25,27 +31,16 @@ let qrCodeData = '';
 let isReady = false;
 let sock = null;
 
-// Determine storage location based on environment
-// In production (Render), use the persistent disk at /data
-// In development, use local folders
-const BASE_STORAGE = process.env.NODE_ENV === 'production' ? '/data' : __dirname;
-const AUTH_FOLDER = path.join(BASE_STORAGE, 'auth');
-const DATA_FOLDER = path.join(BASE_STORAGE, 'data');
+// MongoDB connection details
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://your_username:your_password@your_cluster.mongodb.net/';
+const MONGODB_DB = process.env.MONGODB_DB || 'whatsapp_bot';
 
-// Create folders if they don't exist
-if (!fs.existsSync(AUTH_FOLDER)) {
-    fs.mkdirSync(AUTH_FOLDER, { recursive: true });
-    console.log(`Created auth folder at ${AUTH_FOLDER}`);
+// For local image storage, we still need a folder
+const IMAGES_FOLDER = path.join(__dirname, 'Gifts_Under50');
+if (!fs.existsSync(IMAGES_FOLDER)) {
+    fs.mkdirSync(IMAGES_FOLDER, { recursive: true });
+    console.log(`Created images folder at ${IMAGES_FOLDER}`);
 }
-
-if (!fs.existsSync(DATA_FOLDER)) {
-    fs.mkdirSync(DATA_FOLDER, { recursive: true });
-    console.log(`Created data folder at ${DATA_FOLDER}`);
-}
-
-// Path to user state file
-const USER_STATE_FILE = path.join(DATA_FOLDER, 'userState.json');
-const HUMAN_OVERRIDE_FILE = path.join(DATA_FOLDER, 'humanOverride.json');
 
 // Serve QR code page
 app.get('/', (req, res) => {
@@ -57,7 +52,7 @@ app.get('/', (req, res) => {
                     <p>Your VihaCandlesAndGiftings bot is active and ready to receive messages.</p>
                     <div style="margin-top: 20px; padding: 20px; background: #f0f8ff; border-radius: 10px;">
                         <h3>🔄 Bot Status: ONLINE</h3>
-                        <p>Session stored in local auth files</p>
+                        <p>Session stored in MongoDB database</p>
                     </div>
                 </body>
             </html>
@@ -72,7 +67,7 @@ app.get('/', (req, res) => {
                     </div>
                     <p>Scan this QR code with your WhatsApp to connect the bot</p>
                     <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 10px;">
-                        <small>💾 Using lightweight auth files for session storage</small>
+                        <small>💾 Using MongoDB for persistent session storage</small>
                     </div>
                     <script>
                         // Auto-refresh every 5 seconds
@@ -144,8 +139,10 @@ async function initializeWhatsAppClient() {
         // Store to save the message history
         const store = makeInMemoryStore({ logger });
         
-        // Get auth state
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+        // Get auth state from MongoDB
+        console.log('🔄 Connecting to MongoDB for auth state...');
+        const { state, saveCreds } = await useMongoDBAuthState(MONGODB_URI, MONGODB_DB);
+        console.log('✅ Connected to MongoDB auth state');
         
         // Fetch latest version of Baileys
         const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -205,7 +202,7 @@ async function initializeWhatsAppClient() {
                 }
             } else if (connection === 'open') {
                 console.log('✅ VihaCandlesAndGiftings Bot is ready!');
-                console.log('💾 Session saved to auth files');
+                console.log('💾 Session saved to MongoDB');
                 isReady = true;
                 qrCodeData = ''; // Clear QR code
             }
@@ -225,33 +222,31 @@ async function initializeWhatsAppClient() {
 }
 
 // Your message handling logic adapted for Baileys
-function setupMessageHandlers(sock) {
-    // Load user state and human override from files if they exist
+async function setupMessageHandlers(sock) {
+    // Initialize MongoDB user state
+    const mongoState = await useMongoDBUserState(MONGODB_URI, MONGODB_DB);
+    
+    // Load user state and human override from MongoDB
     let userState = {}; // Stores each user's state
     let humanOverride = {}; // Tracks users where human agent has taken over
     
-    // Load saved state if it exists
+    // Load saved state from MongoDB
     try {
-        if (fs.existsSync(USER_STATE_FILE)) {
-            userState = JSON.parse(fs.readFileSync(USER_STATE_FILE, 'utf8'));
-            console.log('✅ Loaded user state from file');
-        }
+        userState = await mongoState.loadUserState();
+        console.log('✅ Loaded user state from MongoDB');
         
-        if (fs.existsSync(HUMAN_OVERRIDE_FILE)) {
-            humanOverride = JSON.parse(fs.readFileSync(HUMAN_OVERRIDE_FILE, 'utf8'));
-            console.log('✅ Loaded human override data from file');
-        }
+        humanOverride = await mongoState.loadHumanOverride();
+        console.log('✅ Loaded human override data from MongoDB');
     } catch (error) {
-        console.error('❌ Error loading saved state:', error);
+        console.error('❌ Error loading saved state from MongoDB:', error);
     }
     
-    // Function to save state to file
-    const saveState = () => {
+    // Function to save state to MongoDB
+    const saveState = async () => {
         try {
-            fs.writeFileSync(USER_STATE_FILE, JSON.stringify(userState, null, 2));
-            fs.writeFileSync(HUMAN_OVERRIDE_FILE, JSON.stringify(humanOverride, null, 2));
+            await mongoState.saveState(userState, humanOverride);
         } catch (error) {
-            console.error('❌ Error saving state:', error);
+            console.error('❌ Error saving state to MongoDB:', error);
         }
     };
 
@@ -368,7 +363,7 @@ Thank you for your patience! 🙏`
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Path to your images folder
-            const imagesFolder = path.join(__dirname, 'Gifts_Under50');
+            const imagesFolder = IMAGES_FOLDER;
             
             // Check if folder exists
             if (!fs.existsSync(imagesFolder)) {
