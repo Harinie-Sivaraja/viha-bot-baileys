@@ -18,13 +18,26 @@ const useMongoDBAuthState = async (uri, dbName = 'whatsapp_bot') => {
     
     // Function to get credentials from MongoDB
     const getCredentials = async () => {
-        const data = await credsCollection.findOne({ _id: 'credentials' });
-        if (data) {
-            return JSON.parse(data.value);
+        try {
+            const data = await credsCollection.findOne({ _id: 'credentials' });
+            if (data) {
+                // Try to parse the stored credentials
+                try {
+                    return JSON.parse(data.value);
+                } catch (parseError) {
+                    console.error('Error parsing stored credentials:', parseError);
+                    console.log('Creating new credentials...');
+                    return initAuthCreds();
+                }
+            }
+            
+            // If no credentials found, create new ones
+            console.log('No credentials found, creating new ones...');
+            return initAuthCreds();
+        } catch (error) {
+            console.error('Error retrieving credentials:', error);
+            return initAuthCreds();
         }
-        
-        // If no credentials found, create new ones
-        return initAuthCreds();
     };
     
     // Function to save credentials to MongoDB
@@ -39,14 +52,24 @@ const useMongoDBAuthState = async (uri, dbName = 'whatsapp_bot') => {
     
     // Function to get keys from MongoDB
     const getKeys = async () => {
-        const keys = {};
-        const cursor = keysCollection.find({});
-        
-        for await (const doc of cursor) {
-            keys[doc._id] = JSON.parse(doc.value);
+        try {
+            const keys = {};
+            const cursor = keysCollection.find({});
+            
+            for await (const doc of cursor) {
+                try {
+                    keys[doc._id] = JSON.parse(doc.value);
+                } catch (parseError) {
+                    console.error(`Error parsing key ${doc._id}:`, parseError);
+                    // Skip this key if it can't be parsed
+                }
+            }
+            
+            return keys;
+        } catch (error) {
+            console.error('Error retrieving keys:', error);
+            return {};
         }
-        
-        return keys;
     };
     
     // Function to set a key in MongoDB
@@ -63,6 +86,26 @@ const useMongoDBAuthState = async (uri, dbName = 'whatsapp_bot') => {
     const removeKey = async (key) => {
         await keysCollection.deleteOne({ _id: key });
     };
+    
+    // Function to clear all auth data (useful for resetting)
+    const clearAuthData = async () => {
+        try {
+            await credsCollection.deleteMany({});
+            await keysCollection.deleteMany({});
+            console.log('Auth data cleared successfully');
+            return true;
+        } catch (error) {
+            console.error('Error clearing auth data:', error);
+            return false;
+        }
+    };
+
+    // Check if we need to clear auth data (for debugging)
+    const shouldClearAuth = process.env.CLEAR_AUTH === 'true';
+    if (shouldClearAuth) {
+        console.log('CLEAR_AUTH is set to true, clearing auth data...');
+        await clearAuthData();
+    }
     
     // Get initial state
     const creds = await getCredentials();
@@ -88,7 +131,8 @@ const useMongoDBAuthState = async (uri, dbName = 'whatsapp_bot') => {
         },
         saveCreds: async () => {
             await saveCredentials(creds);
-        }
+        },
+        clearAuthData
     };
 };
 
