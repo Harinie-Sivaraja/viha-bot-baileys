@@ -10,8 +10,9 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
-// Import MongoDB auth state provider
-const { useMongoDBAuthState, useMongoDBUserState } = require('./mongoAuthState');
+// Import auth state providers
+const { useMongoDBUserState } = require('./mongoAuthState');
+const { useFileAuthState } = require('./fileAuthState');
 
 // Import Baileys
 const {
@@ -135,10 +136,11 @@ async function initializeWhatsAppClient() {
         // Logger
         const logger = pino({ level: 'warn' });
         
-        // Get auth state from MongoDB
-        console.log('🔄 Connecting to MongoDB for auth state...');
-        const { state, saveCreds } = await useMongoDBAuthState(MONGODB_URI, MONGODB_DB);
-        console.log('✅ Connected to MongoDB auth state');
+        // Get auth state from file system (more reliable than MongoDB for auth)
+        console.log('🔄 Loading auth state from file system...');
+        const authFolder = path.join(__dirname, 'auth_info');
+        const { state, saveCreds } = await useFileAuthState(authFolder);
+        console.log('✅ Loaded auth state from file system');
         
         // Fetch latest version of Baileys
         const { version, isLatest } = await fetchLatestBaileysVersion();
