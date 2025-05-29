@@ -22,9 +22,6 @@ const {
     downloadContentFromMessage
 } = require('@whiskeysockets/baileys');
 
-// Import makeInMemoryStore from the correct location
-const { makeInMemoryStore } = require('@whiskeysockets/baileys/lib/Store');
-
 // Create Express app for web interface
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -138,9 +135,6 @@ async function initializeWhatsAppClient() {
         // Logger
         const logger = pino({ level: 'warn' });
         
-        // Store to save the message history
-        const store = makeInMemoryStore({ logger });
-        
         // Get auth state from MongoDB
         console.log('🔄 Connecting to MongoDB for auth state...');
         const { state, saveCreds } = await useMongoDBAuthState(MONGODB_URI, MONGODB_DB);
@@ -165,9 +159,6 @@ async function initializeWhatsAppClient() {
                 return { conversation: 'Hello!' };
             }
         });
-        
-        // Bind store to socket
-        store.bind(sock.ev);
         
         // Handle connection update events
         sock.ev.on('connection.update', async (update) => {
