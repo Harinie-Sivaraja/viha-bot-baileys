@@ -52,9 +52,30 @@ npm start
 - Type `###` in any message to take over a conversation as a human agent
 - Reply to a message with `RESET_BOT` to re-enable the bot for that conversation
 
-## Deployment
+## Deployment on Render
 
-This bot is optimized for deployment on platforms like Render and Railway with minimal storage requirements.
+This bot is optimized for deployment on platforms like Render with minimal storage requirements.
+
+### Steps to deploy on Render:
+
+1. Push your code to GitHub
+2. Sign up for [Render](https://render.com/)
+3. Create a new Web Service and connect your GitHub repository
+4. Configure the service:
+   - **Environment**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: Free (or choose a paid plan if you need more resources)
+   - **Environment Variables**:
+     - `PORT`: 3000
+     - `NODE_ENV`: production
+   - **Persistent Disk**:
+     - Mount Path: `/data`
+     - Size: 1 GB (minimum)
+
+5. Click "Create Web Service"
+
+The bot will automatically use the persistent disk to store authentication and user state data, ensuring it persists between deployments and restarts.
 
 ## License
 

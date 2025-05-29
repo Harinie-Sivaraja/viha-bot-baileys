@@ -25,16 +25,22 @@ let qrCodeData = '';
 let isReady = false;
 let sock = null;
 
-// Create folders if they don't exist
-const AUTH_FOLDER = path.join(__dirname, 'auth');
-const DATA_FOLDER = path.join(__dirname, 'data');
+// Determine storage location based on environment
+// In production (Render), use the persistent disk at /data
+// In development, use local folders
+const BASE_STORAGE = process.env.NODE_ENV === 'production' ? '/data' : __dirname;
+const AUTH_FOLDER = path.join(BASE_STORAGE, 'auth');
+const DATA_FOLDER = path.join(BASE_STORAGE, 'data');
 
+// Create folders if they don't exist
 if (!fs.existsSync(AUTH_FOLDER)) {
     fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+    console.log(`Created auth folder at ${AUTH_FOLDER}`);
 }
 
 if (!fs.existsSync(DATA_FOLDER)) {
     fs.mkdirSync(DATA_FOLDER, { recursive: true });
+    console.log(`Created data folder at ${DATA_FOLDER}`);
 }
 
 // Path to user state file
@@ -110,7 +116,9 @@ app.listen(PORT, () => {
 
 // Self-ping to prevent Render from sleeping (for free tier)
 if (process.env.NODE_ENV === 'production') {
+    // Render sets this environment variable automatically
     const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    console.log(`Service URL for self-ping: ${RENDER_URL}`);
     
     setInterval(() => {
         const https = require('https');
