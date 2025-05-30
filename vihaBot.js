@@ -337,14 +337,15 @@ const generateDetailedSummary = (userStateData) => {
 };
 
 // Send product images
+// Update sendProductImages function - around line 350
 const sendProductImages = async (jid, folderName, budgetText) => {
     try {
         const detailedSummary = generateDetailedSummary(userState[jid]);
-        await sendTextMessage(jid, detailedSummary);
+        await sendTextMessage(sock, jid, detailedSummary);  // FIXED: Added sock parameter
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        await sendTextMessage(jid, `🎁 *Here are our return gifts ${budgetText}:*`);
+        await sendTextMessage(sock, jid, `🎁 *Here are our return gifts ${budgetText}:*`);  // FIXED: Added sock parameter
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -352,13 +353,13 @@ const sendProductImages = async (jid, folderName, budgetText) => {
         
         if (!fs.existsSync(imagesFolder)) {
             console.log(`❌ Images folder not found: ${imagesFolder}`);
-            await sendTextMessage(jid, `🎁 *Return Gifts ${budgetText}*
+            await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
 
 We have various beautiful return gift options ${budgetText}. Our team will contact you with the complete catalog and images.
 
 If you are interested in any of these products, please let us know.
 
-Our team will give you complete details. 😊`);
+Our team will give you complete details. 😊`);  // FIXED: Added sock parameter
             return;
         }
         
@@ -369,9 +370,9 @@ Our team will give you complete details. 😊`);
 
         if (imageFiles.length === 0) {
             console.log(`❌ No images found in ${folderName}`);
-            await sendTextMessage(jid, `If you are interested in any of these products, please let us know.
+            await sendTextMessage(sock, jid, `If you are interested in any of these products, please let us know.
 
-Our team will give you complete details. 😊`);
+Our team will give you complete details. 😊`);  // FIXED: Added sock parameter
             return;
         }
 
@@ -386,20 +387,20 @@ Our team will give you complete details. 😊`);
 
 Our team will give you complete details. 😊`;
 
-        await sendTextMessage(jid, finalMessage);
+        await sendTextMessage(sock, jid, finalMessage);  // FIXED: Added sock parameter
         
     } catch (error) {
         console.error('❌ Error in sendProductImages:', error);
         const detailedSummary = generateDetailedSummary(userState[jid]);
-        await sendTextMessage(jid, detailedSummary);
+        await sendTextMessage(sock, jid, detailedSummary);  // FIXED: Added sock parameter
         
-        await sendTextMessage(jid, `🎁 *Return Gifts ${budgetText}*
+        await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
 
 We have various beautiful return gift options ${budgetText}. Our team will contact you with the complete catalog and images.
 
 If you are interested in any of these products, please let us know.
 
-Our team will give you complete details. 😊`);
+Our team will give you complete details. 😊`);  // FIXED: Added sock parameter
     }
 };
 
@@ -480,143 +481,144 @@ async function initializeWhatsAppClient() {
         sock.ev.on('creds.update', saveCreds);
         
         // Message handler
-        sock.ev.on('messages.upsert', async ({ messages, type }) => {
-            try {
-                if (type !== 'notify') return;
-                
-                const message = messages[0];
-                if (!message?.message) return;
-                
-                const jid = message.key.remoteJid;
-                const isFromMe = message.key.fromMe;
-                
-                // Skip groups and status
-                if (jid.includes('@g.us') || jid.includes('status@broadcast')) return;
-                
-                // Skip own messages
-                if (isFromMe) return;
-                
-                // Extract message text
-                let messageText = '';
-                if (message.message.conversation) {
-                    messageText = message.message.conversation;
-                } else if (message.message.extendedTextMessage) {
-                    messageText = message.message.extendedTextMessage.text;
-                } else if (message.message.imageMessage?.caption) {
-                    messageText = message.message.imageMessage.caption;
-                }
-                
-                console.log(`📨 Message from ${jid}: ${messageText}`);
-                
-                // Check human override
-                if (humanOverride[jid]) {
-                    console.log(`👤 Human agent active for ${jid}`);
-                    return;
-                }
-                
-                // Check if conversation completed
-                if (userState[jid]?.step === 'completed') {
-                    console.log(`✅ Conversation completed for ${jid}`);
-                    return;
-                }
-                
-                const text = messageText.toLowerCase().trim();
-                
-                // Initialize new user
-                if (!userState[jid]) {
-                    userState[jid] = { 
-                        step: 'start',
-                        errorCount: { start: 0, function_time: 0, budget: 0, piece_count: 0 }
-                    };
-                    await sendTextMessage(jid, messages.welcome);
-                    return;
-                }
-                
-                const state = userState[jid];
-                
-                // Handle invalid input
-                const handleInvalidInput = async (currentStep) => {
-                    state.errorCount[currentStep]++;
-                    
-                    if (state.errorCount[currentStep] >= 3) {
-                        console.log(`❌ User ${jid} exceeded 3 attempts at ${currentStep}`);
-                        userState[jid].step = 'completed';
-                        await sendTextMessage(jid, messages.humanAgent);
-                        return true;
-                    } else {
-                        await sendTextMessage(jid, errorMessages[currentStep]);
-                        return false;
-                    }
-                };
-                
-                // Conversation flow
-                if (state.step === 'start') {
-                    if (['yes', '1'].includes(text)) {
-                        userState[jid].step = 'function_time';
-                        await sendTextMessage(jid, messages.timing);
-                    } else if (['no', '2'].includes(text)) {
-                        userState[jid].step = 'completed';
-                        await sendTextMessage(jid, messages.notInterested);
-                    } else {
-                        const ended = await handleInvalidInput('start');
-                        if (ended) return;
-                    }
-                }
-                else if (state.step === 'function_time') {
-                    if (['1', '2', '3', '4'].includes(text)) {
-                        userState[jid].step = 'budget';
-                        userState[jid].timing = text;
-                        await sendTextMessage(jid, messages.budget);
-                    } else {
-                        const ended = await handleInvalidInput('function_time');
-                        if (ended) return;
-                    }
-                }
-                else if (state.step === 'budget') {
-                    if (['1', '2', '3', '4', '5'].includes(text)) {
-                        userState[jid].step = 'piece_count';
-                        userState[jid].budget = text;
-                        await sendTextMessage(jid, messages.quantity);
-                    } else {
-                        const ended = await handleInvalidInput('budget');
-                        if (ended) return;
-                    }
-                }
-                else if (state.step === 'piece_count') {
-                    if (['1', '2', '3', '4', '5'].includes(text)) {
-                        userState[jid].quantity = text;
-                        userState[jid].step = 'location';
-                        await sendTextMessage(jid, messages.location);
-                    } else {
-                        const ended = await handleInvalidInput('piece_count');
-                        if (ended) return;
-                    }
-                }
-                else if (state.step === 'location') {
-                    userState[jid].location = messageText.trim();
-                    
-                    if (userState[jid].budget === '1') {
-                        await sendProductImages(jid, 'Gifts_Under50', 'under ₹50');
-                    } else if (userState[jid].budget === '2') {
-                        await sendProductImages(jid, 'Gifts_Under100', 'under ₹100');
-                    } else {
-                        const detailedSummary = generateDetailedSummary(userState[jid]);
-                        await sendTextMessage(jid, detailedSummary);
-                        
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        
-                        await sendTextMessage(jid, `✅ *Thank you for your interest!*
-
-Our team will talk to you. 😊`);
-                    }
-                    
-                    userState[jid].step = 'completed';
-                }
-                
-            } catch (error) {
-                console.error('❌ Error handling message:', error);
+        // Message handler - REPLACE the existing sock.ev.on('messages.upsert') section
+sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    try {
+        if (type !== 'notify') return;
+        
+        const message = messages[0];
+        if (!message?.message) return;
+        
+        const jid = message.key.remoteJid;
+        const isFromMe = message.key.fromMe;
+        
+        // Skip groups and status
+        if (jid.includes('@g.us') || jid.includes('status@broadcast')) return;
+        
+        // Skip own messages
+        if (isFromMe) return;
+        
+        // Extract message text
+        let messageText = '';
+        if (message.message.conversation) {
+            messageText = message.message.conversation;
+        } else if (message.message.extendedTextMessage) {
+            messageText = message.message.extendedTextMessage.text;
+        } else if (message.message.imageMessage?.caption) {
+            messageText = message.message.imageMessage.caption;
+        }
+        
+        console.log(`📨 Message from ${jid}: ${messageText}`);
+        
+        // Check human override
+        if (humanOverride[jid]) {
+            console.log(`👤 Human agent active for ${jid}`);
+            return;
+        }
+        
+        // Check if conversation completed
+        if (userState[jid]?.step === 'completed') {
+            console.log(`✅ Conversation completed for ${jid}`);
+            return;
+        }
+        
+        const text = messageText.toLowerCase().trim();
+        
+        // Initialize new user
+        if (!userState[jid]) {
+            userState[jid] = { 
+                step: 'start',
+                errorCount: { start: 0, function_time: 0, budget: 0, piece_count: 0 }
+            };
+            await sendTextMessage(sock, jid, messages.welcome);  // FIXED: Added sock parameter
+            return;
+        }
+        
+        const state = userState[jid];
+        
+        // Handle invalid input
+        const handleInvalidInput = async (currentStep) => {
+            state.errorCount[currentStep]++;
+            
+            if (state.errorCount[currentStep] >= 3) {
+                console.log(`❌ User ${jid} exceeded 3 attempts at ${currentStep}`);
+                userState[jid].step = 'completed';
+                await sendTextMessage(sock, jid, messages.humanAgent);  // FIXED: Added sock parameter
+                return true;
+            } else {
+                await sendTextMessage(sock, jid, errorMessages[currentStep]);  // FIXED: Added sock parameter
+                return false;
             }
-        });
+        };
+        
+        // Conversation flow
+        if (state.step === 'start') {
+            if (['yes', '1'].includes(text)) {
+                userState[jid].step = 'function_time';
+                await sendTextMessage(sock, jid, messages.timing);  // FIXED: Added sock parameter
+            } else if (['no', '2'].includes(text)) {
+                userState[jid].step = 'completed';
+                await sendTextMessage(sock, jid, messages.notInterested);  // FIXED: Added sock parameter
+            } else {
+                const ended = await handleInvalidInput('start');
+                if (ended) return;
+            }
+        }
+        else if (state.step === 'function_time') {
+            if (['1', '2', '3', '4'].includes(text)) {
+                userState[jid].step = 'budget';
+                userState[jid].timing = text;
+                await sendTextMessage(sock, jid, messages.budget);  // FIXED: Added sock parameter
+            } else {
+                const ended = await handleInvalidInput('function_time');
+                if (ended) return;
+            }
+        }
+        else if (state.step === 'budget') {
+            if (['1', '2', '3', '4', '5'].includes(text)) {
+                userState[jid].step = 'piece_count';
+                userState[jid].budget = text;
+                await sendTextMessage(sock, jid, messages.quantity);  // FIXED: Added sock parameter
+            } else {
+                const ended = await handleInvalidInput('budget');
+                if (ended) return;
+            }
+        }
+        else if (state.step === 'piece_count') {
+            if (['1', '2', '3', '4', '5'].includes(text)) {
+                userState[jid].quantity = text;
+                userState[jid].step = 'location';
+                await sendTextMessage(sock, jid, messages.location);  // FIXED: Added sock parameter
+            } else {
+                const ended = await handleInvalidInput('piece_count');
+                if (ended) return;
+            }
+        }
+        else if (state.step === 'location') {
+            userState[jid].location = messageText.trim();
+            
+            if (userState[jid].budget === '1') {
+                await sendProductImages(jid, 'Gifts_Under50', 'under ₹50');
+            } else if (userState[jid].budget === '2') {
+                await sendProductImages(jid, 'Gifts_Under100', 'under ₹100');
+            } else {
+                const detailedSummary = generateDetailedSummary(userState[jid]);
+                await sendTextMessage(sock, jid, detailedSummary);  // FIXED: Added sock parameter
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await sendTextMessage(sock, jid, `✅ *Thank you for your interest!*
+
+Our team will talk to you. 😊`);  // FIXED: Added sock parameter
+            }
+            
+            userState[jid].step = 'completed';
+        }
+        
+    } catch (error) {
+        console.error('❌ Error handling message:', error);
+    }
+});
         
         return sock;
     } catch (error) {
