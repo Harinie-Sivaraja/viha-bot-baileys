@@ -577,10 +577,26 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (state.step === 'start') {
             if (['yes', '1'].includes(text)) {
                 userState[jid].step = 'function_time';
-                await sendTextMessage(sock, jid, messages.timing);  // FIXED: Added sock parameter
+                try {
+                    // Debug the message content
+                    console.log(`Timing message: ${typeof messages.timing === 'string' ? 'String' : 'Not a string'}`);
+                    console.log(`Timing message length: ${messages.timing ? messages.timing.length : 'undefined'}`);
+                    
+                    await sendTextMessage(sock, jid, messages.timing);
+                    console.log(`✅ Sent timing message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending timing message: ${error.message}`);
+                    // Fallback to a simple message if the template fails
+                    await sendTextMessage(sock, jid, "When do you need the return gifts delivered? Reply with 1, 2, 3 or 4");
+                }
             } else if (['no', '2'].includes(text)) {
                 userState[jid].step = 'completed';
-                await sendTextMessage(sock, jid, messages.notInterested);  // FIXED: Added sock parameter
+                try {
+                    await sendTextMessage(sock, jid, messages.notInterested);
+                    console.log(`✅ Sent not interested message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending not interested message: ${error.message}`);
+                }
             } else {
                 const ended = await handleInvalidInput('start');
                 if (ended) return;
@@ -590,7 +606,14 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (['1', '2', '3', '4'].includes(text)) {
                 userState[jid].step = 'budget';
                 userState[jid].timing = text;
-                await sendTextMessage(sock, jid, messages.budget);  // FIXED: Added sock parameter
+                try {
+                    await sendTextMessage(sock, jid, messages.budget);
+                    console.log(`✅ Sent budget message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending budget message: ${error.message}`);
+                    // Fallback to a simple message if the template fails
+                    await sendTextMessage(sock, jid, "What's your budget range? Reply with 1, 2, 3, 4 or 5");
+                }
             } else {
                 const ended = await handleInvalidInput('function_time');
                 if (ended) return;
@@ -600,7 +623,14 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (['1', '2', '3', '4', '5'].includes(text)) {
                 userState[jid].step = 'piece_count';
                 userState[jid].budget = text;
-                await sendTextMessage(sock, jid, messages.quantity);  // FIXED: Added sock parameter
+                try {
+                    await sendTextMessage(sock, jid, messages.quantity);
+                    console.log(`✅ Sent quantity message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending quantity message: ${error.message}`);
+                    // Fallback to a simple message if the template fails
+                    await sendTextMessage(sock, jid, "How many pieces do you need? Reply with 1, 2, 3, 4 or 5");
+                }
             } else {
                 const ended = await handleInvalidInput('budget');
                 if (ended) return;
@@ -610,7 +640,14 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (['1', '2', '3', '4', '5'].includes(text)) {
                 userState[jid].quantity = text;
                 userState[jid].step = 'location';
-                await sendTextMessage(sock, jid, messages.location);  // FIXED: Added sock parameter
+                try {
+                    await sendTextMessage(sock, jid, messages.location);
+                    console.log(`✅ Sent location message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending location message: ${error.message}`);
+                    // Fallback to a simple message if the template fails
+                    await sendTextMessage(sock, jid, "Your delivery location please (City/Area)?");
+                }
             } else {
                 const ended = await handleInvalidInput('piece_count');
                 if (ended) return;
@@ -619,22 +656,42 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
         else if (state.step === 'location') {
             userState[jid].location = messageText.trim();
             
-            if (userState[jid].budget === '1') {
-                await sendProductImages(jid, 'Gifts_Under50', 'under ₹50');
-            } else if (userState[jid].budget === '2') {
-                await sendProductImages(jid, 'Gifts_Under100', 'under ₹100');
-            } else {
-                const detailedSummary = generateDetailedSummary(userState[jid]);
-                await sendTextMessage(sock, jid, detailedSummary);  // FIXED: Added sock parameter
-                
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                await sendTextMessage(sock, jid, `✅ *Thank you for your interest!*
+            try {
+                if (userState[jid].budget === '1') {
+                    await sendProductImages(jid, 'Gifts_Under50', 'under ₹50');
+                    console.log(`✅ Sent product images (under ₹50) to ${jid}`);
+                } else if (userState[jid].budget === '2') {
+                    await sendProductImages(jid, 'Gifts_Under100', 'under ₹100');
+                    console.log(`✅ Sent product images (under ₹100) to ${jid}`);
+                } else {
+                    try {
+                        const detailedSummary = generateDetailedSummary(userState[jid]);
+                        await sendTextMessage(sock, jid, detailedSummary);
+                        console.log(`✅ Sent detailed summary to ${jid}`);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        await sendTextMessage(sock, jid, `✅ *Thank you for your interest!*
 
-Our team will talk to you. 😊`);  // FIXED: Added sock parameter
+Our team will talk to you. 😊`);
+                        console.log(`✅ Sent thank you message to ${jid}`);
+                    } catch (error) {
+                        console.error(`❌ Error sending summary: ${error.message}`);
+                        // Fallback to a simple message
+                        await sendTextMessage(sock, jid, "Thank you for your interest! Our team will contact you shortly.");
+                    }
+                }
+            } catch (error) {
+                console.error(`❌ Error in location step: ${error.message}`);
+                try {
+                    await sendTextMessage(sock, jid, "Thank you for your information. Our team will contact you shortly.");
+                } catch (innerError) {
+                    console.error(`❌ Error sending fallback message: ${innerError.message}`);
+                }
             }
             
             userState[jid].step = 'completed';
+            console.log(`✅ Conversation completed for ${jid}`);
         }
         
     } catch (error) {
