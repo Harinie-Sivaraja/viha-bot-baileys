@@ -662,7 +662,7 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                     await sendProductImages(jid, 'Gifts_Under50', 'under ₹50');
                     console.log(`✅ Sent product images (under ₹50) to ${jid}`);
                 } else if (userState[jid].budget === '2') {
-                    await sendProductImages(jid, 'Gifts_Under100', 'under ₹100');
+                    await sendProductImages(jid, 'Gifts_under100', 'under ₹100');
                     console.log(`✅ Sent product images (under ₹100) to ${jid}`);
                 } else {
                     try {
