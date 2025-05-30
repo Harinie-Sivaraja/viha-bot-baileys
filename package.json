@@ -1,11 +1,11 @@
 {
-  "name": "whatsapp-baileys-bot",
+  "name": "viha-bot-baileys",
   "version": "1.0.0",
   "description": "WhatsApp Bot using Baileys for Render deployment",
-  "main": "index.js",
+  "main": "vihaBot.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node vihaBot.js",
+    "dev": "nodemon vihaBot.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.6.0",
@@ -17,5 +17,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "render": {
+    "serviceName": "viha-bot-baileys"
   }
 }
