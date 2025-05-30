@@ -253,14 +253,35 @@ const errorMessages = {
 };
 
 // Helper functions
-const sendTextMessage = async (jid, text) => {
+async function sendTextMessage(sock, jid, text) {
     try {
-        await sock.sendMessage(jid, { text });
-        console.log(`📤 Sent message to ${jid}: ${text.substring(0, 50)}...`);
+        // Validate input parameters
+        if (!text || typeof text !== 'string') {
+            console.log(`❌ Invalid text provided: ${text}`);
+            return;
+        }
+        
+        if (!jid) {
+            console.log('❌ Invalid JID provided');
+            return;
+        }
+
+        // Trim whitespace and check if text is empty
+        const trimmedText = text.trim();
+        if (trimmedText === '') {
+            console.log('❌ Empty text after trimming');
+            return;
+        }
+
+        await sock.sendMessage(jid, { 
+            text: trimmedText 
+        });
+        
+        console.log(`📤 Sent message to ${jid}: ${trimmedText}`);
     } catch (error) {
         console.error('❌ Error sending message:', error);
     }
-};
+}
 
 const sendImageMessage = async (jid, imagePath, caption = '') => {
     try {
