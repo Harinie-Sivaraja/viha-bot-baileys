@@ -20,6 +20,8 @@ const {
 
 // Create Express app for web interface
 const app = express();
+// Use the PORT environment variable provided by Render
+// Default to 3000 only for local development
 const PORT = process.env.PORT || 3000;
 
 let qrCodeData = '';
@@ -152,15 +154,19 @@ app.get('/health', (req, res) => {
 });
 
 // Start Express server
-app.listen(PORT, () => {
+// Make sure to listen on the PORT provided by Render
+const server = app.listen(PORT, () => {
     console.log(`🌐 Web interface running on port ${PORT}`);
     console.log(`📊 Health check available at /health`);
+    // Log additional information to help with debugging
+    console.log(`🔍 Environment: ${process.env.NODE_ENV}`);
 });
 
 // Keep-alive for Render
 if (process.env.NODE_ENV === 'production') {
-    const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-    console.log(`🔄 Keep-alive URL: ${RENDER_URL}`);
+    // Use the RENDER_EXTERNAL_URL provided by Render
+    const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
+    console.log(`🔄 Keep-alive URL: ${RENDER_URL || 'Not available yet'}`);
     
     setInterval(() => {
         const https = require('https');
