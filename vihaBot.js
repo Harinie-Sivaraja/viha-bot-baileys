@@ -536,7 +536,13 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
                 step: 'start',
                 errorCount: { start: 0, function_time: 0, budget: 0, piece_count: 0 }
             };
-            await sendTextMessage(sock, jid, messages.welcome);  // FIXED: Added sock parameter
+            try {
+                // Make sure we're sending the welcome message correctly
+                await sendTextMessage(sock, jid, messages.welcome);
+                console.log(`✅ Sent welcome message to ${jid}`);
+            } catch (error) {
+                console.error(`❌ Error sending welcome message: ${error.message}`);
+            }
             return;
         }
         
@@ -549,10 +555,20 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (state.errorCount[currentStep] >= 3) {
                 console.log(`❌ User ${jid} exceeded 3 attempts at ${currentStep}`);
                 userState[jid].step = 'completed';
-                await sendTextMessage(sock, jid, messages.humanAgent);  // FIXED: Added sock parameter
+                try {
+                    // Make sure we're sending the human agent message correctly
+                    await sendTextMessage(sock, jid, messages.humanAgent);
+                    console.log(`✅ Sent human agent message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending human agent message: ${error.message}`);
+                }
                 return true;
             } else {
-                await sendTextMessage(sock, jid, errorMessages[currentStep]);  // FIXED: Added sock parameter
+                try {
+                    await sendTextMessage(sock, jid, errorMessages[currentStep]);
+                } catch (error) {
+                    console.error(`❌ Error sending error message: ${error.message}`);
+                }
                 return false;
             }
         };
