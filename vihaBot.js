@@ -488,11 +488,11 @@ async function initializeWhatsAppClient() {
         
         // Message handler
         // Message handler - REPLACE the existing sock.ev.on('messages.upsert') section
-sock.ev.on('messages.upsert', async ({ messages, type }) => {
+sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
     try {
         if (type !== 'notify') return;
         
-        const message = messages[0];
+        const message = receivedMessages[0];
         if (!message?.message) return;
         
         const jid = message.key.remoteJid;
@@ -581,6 +581,7 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
                     // Debug the message content
                     console.log(`Timing message: ${typeof messages.timing === 'string' ? 'String' : 'Not a string'}`);
                     console.log(`Timing message length: ${messages.timing ? messages.timing.length : 'undefined'}`);
+                    console.log(`Messages object keys: ${Object.keys(messages).join(', ')}`);
                     
                     await sendTextMessage(sock, jid, messages.timing);
                     console.log(`✅ Sent timing message to ${jid}`);
