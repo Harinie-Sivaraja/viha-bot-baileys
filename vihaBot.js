@@ -445,44 +445,69 @@ async function initializeWhatsAppClient() {
         });
         
         // Connection handler
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
+        // Replace your existing connection.update handler with this:
+
+sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+    
+    if (qr) {
+        console.log('📱 QR Code received');
+        try {
+            qrCodeData = await QRCode.toDataURL(qr, { width: 300 });
+            console.log('✅ QR Code generated for web interface');
+        } catch (err) {
+            console.error('❌ Error generating QR:', err);
+        }
+    }
+    
+    if (connection === 'close') {
+        const shouldReconnect = lastDisconnect?.error instanceof Boom ? 
+            lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
+        
+        console.log('❌ Connection closed:', lastDisconnect?.error?.message || 'unknown reason');
+        isReady = false;
+        qrCodeData = '';
+        
+        // Check if user logged out
+        if (lastDisconnect?.error instanceof Boom && 
+            lastDisconnect.error.output.statusCode === DisconnectReason.loggedOut) {
             
-            if (qr) {
-                console.log('📱 QR Code received');
-                try {
-                    qrCodeData = await QRCode.toDataURL(qr, { width: 300 });
-                    console.log('✅ QR Code generated for web interface');
-                } catch (err) {
-                    console.error('❌ Error generating QR:', err);
+            console.log('🚪 User logged out - clearing auth and restarting...');
+            
+            // Clear auth folder to force new QR
+            try {
+                const authFolder = path.join(__dirname, 'auth_info');
+                if (fs.existsSync(authFolder)) {
+                    const files = fs.readdirSync(authFolder);
+                    for (const file of files) {
+                        fs.unlinkSync(path.join(authFolder, file));
+                    }
+                    console.log('🧹 Auth cleared');
                 }
+            } catch (error) {
+                console.error('❌ Error clearing auth:', error);
             }
             
-            if (connection === 'close') {
-                const shouldReconnect = lastDisconnect?.error instanceof Boom ? 
-                    lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
-                
-                console.log('❌ Connection closed:', lastDisconnect?.error?.message || 'unknown reason');
-                isReady = false;
-                qrCodeData = '';
-                
-                if (shouldReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                    reconnectAttempts++;
-                    console.log(`🔄 Reconnecting... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
-                    setTimeout(() => initializeWhatsAppClient(), 5000);
-                } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-                    console.log('❌ Max reconnection attempts reached');
-                } else {
-                    console.log('❌ Logged out, waiting for QR scan');
-                    qrCodeData = '';
-                }
-            } else if (connection === 'open') {
-                console.log('✅ VihaCandlesAndGiftings Bot is ready!');
-                isReady = true;
-                qrCodeData = '';
-                reconnectAttempts = 0;
-            }
-        });
+            // Restart immediately for logout
+            setTimeout(() => initializeWhatsAppClient(), 2000);
+            
+        } else if (shouldReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            console.log(`🔄 Reconnecting... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+            setTimeout(() => initializeWhatsAppClient(), 5000);
+        } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            console.log('❌ Max reconnection attempts reached');
+        } else {
+            console.log('❌ Logged out, waiting for QR scan');
+            qrCodeData = '';
+        }
+    } else if (connection === 'open') {
+        console.log('✅ VihaCandlesAndGiftings Bot is ready!');
+        isReady = true;
+        qrCodeData = '';
+        reconnectAttempts = 0;
+    }
+});
         
         sock.ev.on('creds.update', saveCreds);
         
