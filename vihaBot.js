@@ -34,6 +34,10 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://your_username:your_password@your_cluster.mongodb.net/';
 const MONGODB_DB = process.env.MONGODB_DB || 'whatsapp_bot';
 
+// Parse blocked numbers from environment variable
+// Format should be comma-separated numbers without spaces, e.g.: "1234567890,9876543210"
+const BLOCKED_NUMBERS = process.env.BLOCKED_NUMBERS ? process.env.BLOCKED_NUMBERS.split(',') : [];
+
 // For local image storage
 const IMAGES_FOLDER = path.join(__dirname, 'Gifts_Under50');
 if (!fs.existsSync(IMAGES_FOLDER)) {
@@ -160,6 +164,13 @@ const server = app.listen(PORT, () => {
     console.log(`📊 Health check available at /health`);
     // Log additional information to help with debugging
     console.log(`🔍 Environment: ${process.env.NODE_ENV}`);
+    
+    // Log blocked numbers (if any)
+    if (BLOCKED_NUMBERS.length > 0) {
+        console.log(`🚫 Blocked numbers (auto-responses only): ${BLOCKED_NUMBERS.join(', ')}`);
+    } else {
+        console.log(`ℹ️ No blocked numbers configured`);
+    }
 });
 
 // Keep-alive for Render
@@ -528,6 +539,18 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         
         // Skip own messages
         if (isFromMe) return;
+        
+        // Check if number is blocked (for automated responses only)
+        const phoneNumber = jid.split('@')[0];
+        const isBlocked = BLOCKED_NUMBERS.includes(phoneNumber);
+        if (isBlocked) {
+            console.log(`🚫 Message from blocked number ${phoneNumber} - will only allow human responses`);
+            // Force human override for blocked numbers
+            if (!humanOverride[jid]) {
+                humanOverride[jid] = true;
+                console.log(`👤 Human agent mode activated for blocked number ${phoneNumber}`);
+            }
+        }
         
         // Extract message text
         let messageText = '';
