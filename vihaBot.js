@@ -712,11 +712,9 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 // Send thank you message with 30 minute timeframe
-                await sendTextMessage(sock, jid, `✅ *Thank you for your information!*
+                await sendTextMessage(sock, jid, `🎀 Thanks for your interest in VihaCandlesAndGiftings. Our team will send you return gift options in your budget within 30 mins. 🎀
 
-Thanks for your reply. Our team will send return gift options in your budget within 30 mins.
-
-We appreciate your interest in VihaCandlesAndGiftings! 🎁`);
+🎁 We look forward to serving you! 🎁`);
                 console.log(`✅ Sent thank you message to ${jid}`);
                 
                 /* 
@@ -733,7 +731,9 @@ We appreciate your interest in VihaCandlesAndGiftings! 🎁`);
             } catch (error) {
                 console.error(`❌ Error in location step: ${error.message}`);
                 try {
-                    await sendTextMessage(sock, jid, "Thank you for your information. Our team will contact you shortly with return gift options.");
+                    await sendTextMessage(sock, jid, `🎀 Thanks for your interest in VihaCandlesAndGiftings. Our team will send you return gift options in your budget within 30 mins. 🎀
+
+🎁 We look forward to serving you! 🎁`);
                 } catch (innerError) {
                     console.error(`❌ Error sending fallback message: ${innerError.message}`);
                 }
