@@ -552,7 +552,7 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             }
         }
         
-        // Extract message text
+        // Extract message texts
         let messageText = '';
         if (message.message.conversation) {
             messageText = message.message.conversation;
