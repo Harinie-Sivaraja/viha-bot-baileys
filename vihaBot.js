@@ -198,7 +198,9 @@ let humanOverride = {};
 
 // Enhanced message templates
 const messages = {
-    welcome: `To serve you better, we have *5 quick questions* for you.
+    welcome: `🎁 *Welcome to VihaCandlesAndGiftings!* 🎁
+
+To serve you better, we have *5 quick questions* for you.
 
 Are you looking for return gifts for your function?
 
@@ -704,36 +706,34 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             userState[jid].location = messageText.trim();
             
             try {
-                // Generate and send the detailed summary
-                const detailedSummary = generateDetailedSummary(userState[jid]);
-                await sendTextMessage(sock, jid, detailedSummary);
-                console.log(`✅ Sent detailed summary to ${jid}`);
-                
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Send thank you message with 30 minute timeframe
-                await sendTextMessage(sock, jid, `🎀 Thanks for your interest in VihaCandlesAndGiftings. Our team will send you return gift options in your budget within 30 mins. 🎀
-
-🎁 We look forward to serving you! 🎁`);
-                console.log(`✅ Sent thank you message to ${jid}`);
-                
-                /* 
-                // COMMENTED OUT: Original image sending logic
                 if (userState[jid].budget === '1') {
                     await sendProductImages(jid, 'Gifts_Under50', 'under ₹50');
                     console.log(`✅ Sent product images (under ₹50) to ${jid}`);
                 } else if (userState[jid].budget === '2') {
                     await sendProductImages(jid, 'Gifts_under100', 'under ₹100');
                     console.log(`✅ Sent product images (under ₹100) to ${jid}`);
-                } 
-                */
-                
+                } else {
+                    try {
+                        const detailedSummary = generateDetailedSummary(userState[jid]);
+                        await sendTextMessage(sock, jid, detailedSummary);
+                        console.log(`✅ Sent detailed summary to ${jid}`);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        await sendTextMessage(sock, jid, `✅ *Thank you for your interest!*
+
+Our team will talk to you. 😊`);
+                        console.log(`✅ Sent thank you message to ${jid}`);
+                    } catch (error) {
+                        console.error(`❌ Error sending summary: ${error.message}`);
+                        // Fallback to a simple message
+                        await sendTextMessage(sock, jid, "Thank you for your interest! Our team will contact you shortly.");
+                    }
+                }
             } catch (error) {
                 console.error(`❌ Error in location step: ${error.message}`);
                 try {
-                    await sendTextMessage(sock, jid, `🎀 Thanks for your interest in VihaCandlesAndGiftings. Our team will send you return gift options in your budget within 30 mins. 🎀
-
-🎁 We look forward to serving you! 🎁`);
+                    await sendTextMessage(sock, jid, "Thank you for your information. Our team will contact you shortly.");
                 } catch (innerError) {
                     console.error(`❌ Error sending fallback message: ${innerError.message}`);
                 }
