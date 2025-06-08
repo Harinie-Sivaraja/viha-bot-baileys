@@ -195,21 +195,13 @@ if (process.env.NODE_ENV === 'production') {
 // Simple in-memory state management (for Render's ephemeral storage)
 let userState = {};
 let humanOverride = {};
+let userTimeouts = {}; // Store timeout IDs for each user
 
 // Enhanced message templates
 const messages = {
     welcome: `🎁 *Welcome to VihaCandlesAndGiftings!* 🎁
 
-To serve you better, we have *5 quick questions* for you.
-
-Are you looking for return gifts for your function?
-
-━━━━━━━━━━━━━━━━━━━
-1️⃣ → Yes, I need return gifts
-2️⃣ → No
-━━━━━━━━━━━━━━━━━━━
-
-Reply with *1* or *2*`,
+To serve you better, please answer *4 quick questions* to get the product details.`,
 
     timing: `⏰ *When do you need the return gifts delivered?*
 
@@ -263,7 +255,6 @@ Thank you for your patience! 🙏`
 
 // Error messages
 const errorMessages = {
-    start: `❌ Please reply with *1* or *2*`,
     function_time: `❌ Please reply with *1, 2, 3* or *4*`,  
     budget: `❌ Please reply with *1, 2, 3, 4* or *5*`,
     piece_count: `❌ Please reply with *1, 2, 3, 4* or *5*`
@@ -572,6 +563,12 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         
         // Check if conversation completed
         if (userState[jid]?.step === 'completed') {
+            // Make sure any timeout is cleared
+            if (userTimeouts[jid]) {
+                clearTimeout(userTimeouts[jid]);
+                userTimeouts[jid] = null;
+                console.log(`✅ Cleared timeout for ${jid} - conversation already completed`);
+            }
             console.log(`✅ Conversation completed for ${jid}`);
             return;
         }
@@ -581,13 +578,42 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         // Initialize new user
         if (!userState[jid]) {
             userState[jid] = { 
-                step: 'start',
-                errorCount: { start: 0, function_time: 0, budget: 0, piece_count: 0 }
+                step: 'piece_count',
+                errorCount: { piece_count: 0, function_time: 0, budget: 0 },
+                lastMessageTime: Date.now()
             };
             try {
-                // Make sure we're sending the welcome message correctly
+                // Send welcome message followed by the first question (quantity)
                 await sendTextMessage(sock, jid, messages.welcome);
                 console.log(`✅ Sent welcome message to ${jid}`);
+                
+                // Wait a second before sending the first question
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Send the quantity question as the first question
+                await sendTextMessage(sock, jid, messages.quantity);
+                console.log(`✅ Sent quantity question to ${jid}`);
+                
+                // Set a timeout to send the notInterested message after 3 minutes if no response
+                // Clear any existing timeout for this user
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                }
+                
+                // Set a new timeout - 3 minutes (180000 ms)
+                userTimeouts[jid] = setTimeout(async () => {
+                    // Check if the user is still in the first step
+                    if (userState[jid] && userState[jid].step === 'piece_count') {
+                        try {
+                            console.log(`⏰ No response from ${jid} after 3 minutes. Sending notInterested message.`);
+                            await sendTextMessage(sock, jid, messages.notInterested);
+                            console.log(`✅ Sent notInterested message to ${jid}`);
+                        } catch (error) {
+                            console.error(`❌ Error sending notInterested message: ${error.message}`);
+                        }
+                    }
+                }, 3 * 60 * 1000); // 3 minutes
+                
             } catch (error) {
                 console.error(`❌ Error sending welcome message: ${error.message}`);
             }
@@ -603,6 +629,14 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             if (state.errorCount[currentStep] >= 3) {
                 console.log(`❌ User ${jid} exceeded 3 attempts at ${currentStep}`);
                 userState[jid].step = 'completed';
+                
+                // Clear any pending timeouts when transferring to human agent
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                    userTimeouts[jid] = null;
+                    console.log(`✅ Cleared timeout for ${jid} - transferring to human agent`);
+                }
+                
                 try {
                     // Make sure we're sending the human agent message correctly
                     await sendTextMessage(sock, jid, messages.humanAgent);
@@ -621,37 +655,8 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             }
         };
         
-        // Conversation flow
-        if (state.step === 'start') {
-            if (['yes', '1'].includes(text)) {
-                userState[jid].step = 'function_time';
-                try {
-                    // Debug the message content
-                    console.log(`Timing message: ${typeof messages.timing === 'string' ? 'String' : 'Not a string'}`);
-                    console.log(`Timing message length: ${messages.timing ? messages.timing.length : 'undefined'}`);
-                    console.log(`Messages object keys: ${Object.keys(messages).join(', ')}`);
-                    
-                    await sendTextMessage(sock, jid, messages.timing);
-                    console.log(`✅ Sent timing message to ${jid}`);
-                } catch (error) {
-                    console.error(`❌ Error sending timing message: ${error.message}`);
-                    // Fallback to a simple message if the template fails
-                    await sendTextMessage(sock, jid, "When do you need the return gifts delivered? Reply with 1, 2, 3 or 4");
-                }
-            } else if (['no', '2'].includes(text)) {
-                userState[jid].step = 'completed';
-                try {
-                    await sendTextMessage(sock, jid, messages.notInterested);
-                    console.log(`✅ Sent not interested message to ${jid}`);
-                } catch (error) {
-                    console.error(`❌ Error sending not interested message: ${error.message}`);
-                }
-            } else {
-                const ended = await handleInvalidInput('start');
-                if (ended) return;
-            }
-        }
-        else if (state.step === 'function_time') {
+        // Conversation flow - Starting with piece_count (quantity) question
+        if (state.step === 'function_time') {
             if (['1', '2', '3', '4'].includes(text)) {
                 userState[jid].step = 'budget';
                 userState[jid].timing = text;
@@ -670,25 +675,8 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         }
         else if (state.step === 'budget') {
             if (['1', '2', '3', '4', '5'].includes(text)) {
-                userState[jid].step = 'piece_count';
-                userState[jid].budget = text;
-                try {
-                    await sendTextMessage(sock, jid, messages.quantity);
-                    console.log(`✅ Sent quantity message to ${jid}`);
-                } catch (error) {
-                    console.error(`❌ Error sending quantity message: ${error.message}`);
-                    // Fallback to a simple message if the template fails
-                    await sendTextMessage(sock, jid, "How many pieces do you need? Reply with 1, 2, 3, 4 or 5");
-                }
-            } else {
-                const ended = await handleInvalidInput('budget');
-                if (ended) return;
-            }
-        }
-        else if (state.step === 'piece_count') {
-            if (['1', '2', '3', '4', '5'].includes(text)) {
-                userState[jid].quantity = text;
                 userState[jid].step = 'location';
+                userState[jid].budget = text;
                 try {
                     await sendTextMessage(sock, jid, messages.location);
                     console.log(`✅ Sent location message to ${jid}`);
@@ -698,6 +686,38 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                     await sendTextMessage(sock, jid, "Your delivery location please (City/Area)?");
                 }
             } else {
+                const ended = await handleInvalidInput('budget');
+                if (ended) return;
+            }
+        }
+        else if (state.step === 'piece_count') {
+            // Clear the timeout since the user has responded
+            if (userTimeouts[jid]) {
+                clearTimeout(userTimeouts[jid]);
+                userTimeouts[jid] = null;
+                console.log(`✅ Cleared timeout for ${jid} - user responded to first question`);
+            }
+            
+            if (['1', '2', '3', '4', '5'].includes(text)) {
+                userState[jid].quantity = text;
+                userState[jid].step = 'function_time';
+                try {
+                    await sendTextMessage(sock, jid, messages.timing);
+                    console.log(`✅ Sent timing message to ${jid}`);
+                } catch (error) {
+                    console.error(`❌ Error sending timing message: ${error.message}`);
+                    // Fallback to a simple message if the template fails
+                    await sendTextMessage(sock, jid, "When do you need the return gifts delivered? Reply with 1, 2, 3 or 4");
+                }
+            } else {
+                // Even for invalid responses, we should clear the timeout
+                // since the user has at least responded
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                    userTimeouts[jid] = null;
+                    console.log(`✅ Cleared timeout for ${jid} - user responded with invalid input`);
+                }
+                
                 const ended = await handleInvalidInput('piece_count');
                 if (ended) return;
             }
@@ -740,6 +760,14 @@ Our team will talk to you. 😊`);
             }
             
             userState[jid].step = 'completed';
+            
+            // Clear any pending timeouts when conversation is completed
+            if (userTimeouts[jid]) {
+                clearTimeout(userTimeouts[jid]);
+                userTimeouts[jid] = null;
+                console.log(`✅ Cleared timeout for ${jid} - conversation completed`);
+            }
+            
             console.log(`✅ Conversation completed for ${jid}`);
         }
         
