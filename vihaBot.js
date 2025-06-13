@@ -240,7 +240,7 @@ Reply with *1, 2, 3, 4* or *5*`,
 
     location: `📍 *Your delivery location please (City/Area)?*`,
 
-    notInterested: `Then, Shall we know why you have contacted us? Do you have any return gifts requirement? If so, you will get
+    notInterested: `Shall we know why you have contacted us? Do you have any return gifts requirement? If so, you will get
 
 🎁 Get *FLAT ₹250 DISCOUNT* on your first purchase with us on 50 pieces MOQ.
 
