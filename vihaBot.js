@@ -345,7 +345,7 @@ const generateDetailedSummary = (userStateData) => {
 };
 
 // Send product images
-// Update sendProductImages function - around line 350
+// Update sendProductImages function - aroun line 350
 const sendProductImages = async (jid, folderName, budgetText) => {
     try {
         const detailedSummary = generateDetailedSummary(userState[jid]);
