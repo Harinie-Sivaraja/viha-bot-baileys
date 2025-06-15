@@ -30,20 +30,22 @@ let sock = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
-// MongoDB connection details
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://your_username:your_password@your_cluster.mongodb.net/';
-const MONGODB_DB = process.env.MONGODB_DB || 'whatsapp_bot';
-
 // Parse blocked numbers from environment variable
 // Format should be comma-separated numbers without spaces, e.g.: "1234567890,9876543210"
 const BLOCKED_NUMBERS = process.env.BLOCKED_NUMBERS ? process.env.BLOCKED_NUMBERS.split(',') : [];
 
-// For local image storage
+// For local image storage - Initialize all gift folders
+const GIFT_FOLDERS = ['Gifts_Under50', 'Gifts_under100', 'Gifts_under150'];
+GIFT_FOLDERS.forEach(folderName => {
+    const folderPath = path.join(__dirname, folderName);
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+        console.log(`Created images folder at ${folderPath}`);
+    }
+});
+
+// Keep the original IMAGES_FOLDER for backward compatibility
 const IMAGES_FOLDER = path.join(__dirname, 'Gifts_Under50');
-if (!fs.existsSync(IMAGES_FOLDER)) {
-    fs.mkdirSync(IMAGES_FOLDER, { recursive: true });
-    console.log(`Created images folder at ${IMAGES_FOLDER}`);
-}
 
 // Enhanced web interface
 app.get('/', (req, res) => {
@@ -732,6 +734,9 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                 } else if (userState[jid].budget === '2') {
                     await sendProductImages(jid, 'Gifts_under100', 'under ₹100');
                     console.log(`✅ Sent product images (under ₹100) to ${jid}`);
+                } else if (userState[jid].budget === '3') {
+                    await sendProductImages(jid, 'Gifts_under150', 'under ₹150');
+                    console.log(`✅ Sent product images (under ₹150) to ${jid}`);
                 } else {
                     try {
                         const detailedSummary = generateDetailedSummary(userState[jid]);
