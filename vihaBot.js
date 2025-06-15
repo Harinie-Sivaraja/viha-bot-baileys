@@ -388,7 +388,7 @@ Our team will give you complete details. 😊`);  // FIXED: Added sock parameter
         for (let i = 0; i < Math.min(imageFiles.length, 10); i++) { // Limit to 10 images
             const imagePath = path.join(imagesFolder, imageFiles[i]);
             await sendImageMessage(jid, imagePath);
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
         }
 
         const finalMessage = `If you are interested in any of these products, please let us know.
