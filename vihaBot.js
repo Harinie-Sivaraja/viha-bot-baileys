@@ -220,13 +220,12 @@ Reply with *1, 2, 3* or *4*`,
 
 ━━━━━━━━━━━━━━━━━━━
 1️⃣ → Under ₹50
-2️⃣ → ₹51 - ₹100
-3️⃣ → ₹101 - ₹150
-4️⃣ → ₹151 - ₹200
-5️⃣ → More than ₹200
+2️⃣ → Under ₹100
+3️⃣ → Under ₹150
+4️⃣ → Above ₹150
 ━━━━━━━━━━━━━━━━━━━
 
-Reply with *1, 2, 3, 4* or *5*`,
+Reply with *1, 2, 3* or *4*`,
 
     quantity: `🧮 *How many pieces do you need?*
 
@@ -258,7 +257,7 @@ Thank you for your patience! 🙏`
 // Error messages
 const errorMessages = {
     function_time: `❌ Please reply with *1, 2, 3* or *4*`,  
-    budget: `❌ Please reply with *1, 2, 3, 4* or *5*`,
+    budget: `❌ Please reply with *1, 2, 3* or *4*`,
     piece_count: `❌ Please reply with *1, 2, 3, 4* or *5*`
 };
 
@@ -325,10 +324,9 @@ const generateDetailedSummary = (userStateData) => {
 
     const budgetOptions = {
         '1': 'Under ₹50',
-        '2': '₹51 - ₹100',
-        '3': '₹101 - ₹150', 
-        '4': '₹151 - ₹200',
-        '5': 'More than ₹200'
+        '2': 'Under ₹100',
+        '3': 'Under ₹150',
+        '4': 'Above ₹150'
     };
 
     const quantityOptions = {
@@ -676,7 +674,7 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             }
         }
         else if (state.step === 'budget') {
-            if (['1', '2', '3', '4', '5'].includes(text)) {
+            if (['1', '2', '3', '4'].includes(text)) {
                 userState[jid].step = 'location';
                 userState[jid].budget = text;
                 try {
