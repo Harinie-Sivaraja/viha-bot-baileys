@@ -345,7 +345,7 @@ const generateDetailedSummary = (userStateData) => {
 };
 
 // Send product images
-// Update sendProductImages function - aroun line 350
+// Update sendProductImages function - around line 350
 const sendProductImages = async (jid, folderName, budgetText) => {
     try {
         const detailedSummary = generateDetailedSummary(userState[jid]);
@@ -388,7 +388,7 @@ Our team will give you complete details. 😊`);  // FIXED: Added sock parameter
         for (let i = 0; i < Math.min(imageFiles.length, 10); i++) { // Limit to 10 images
             const imagePath = path.join(imagesFolder, imageFiles[i]);
             await sendImageMessage(jid, imagePath);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+            await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
         }
 
         const finalMessage = `If you are interested in any of these products, please let us know.
