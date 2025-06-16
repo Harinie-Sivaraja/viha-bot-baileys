@@ -394,7 +394,7 @@ const sendBest10Images = async (jid, folderName, budgetText) => {
                 for (let i = 0; i < best10Images.length; i++) {
                     const imagePath = path.join(best10Folder, best10Images[i]);
                     await sendImageMessage(jid, imagePath);
-                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
                 // Ask if user wants to see more collections
@@ -410,6 +410,7 @@ Reply with *1, 2, YES* or *NO*`);
                 // Set user state to wait for more catalog response
                 userState[jid].waitingForCatalogResponse = true;
                 userState[jid].currentBudgetText = budgetText; // Store budget text for response
+                console.log(`🔍 Debug: Set waitingForCatalogResponse=true for ${jid}, budget: ${budgetText}`);
                 return;
             }
         }
@@ -451,7 +452,7 @@ Thank you for your interest! 😊`);
         for (let i = 0; i < imagesToSend; i++) {
             const imagePath = path.join(mainFolder, imageFiles[i]);
             await sendImageMessage(jid, imagePath);
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         if (imageFiles.length > 10) {
@@ -465,6 +466,7 @@ Thank you for your interest! 😊`);
 Reply with *1, 2, YES* or *NO*`);
             userState[jid].waitingForCatalogResponse = true;
             userState[jid].currentBudgetText = budgetText;
+            console.log(`🔍 Debug: Set waitingForCatalogResponse=true for ${jid} (fallback), budget: ${budgetText}`);
         } else {
             await sendTextMessage(sock, jid, `Thank you for viewing our return gifts ${budgetText}!
 
@@ -795,13 +797,14 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         }
         else if (state.waitingForCatalogResponse) {
             // Handle 1/2/YES/NO response for more collections request
-            if (text === '1' || text.toLowerCase() === 'yes' || text.toLowerCase() === 'y') {
+            console.log(`🔍 Debug: Customer ${jid} replied "${text}" while waiting for catalog response`);
+            if (text === '1' || text === 'yes' || text === 'y') {
                 try {
                     const budgetText = userState[jid].currentBudgetText || 'in your budget';
                     await sendTextMessage(sock, jid, `✨ *Great! Our team will send you all collections ${budgetText} shortly.*
 
 Thank you for your interest! 😊`);
-                    console.log(`✅ Customer ${jid} requested more collections`);
+                    console.log(`✅ Customer ${jid} requested more collections for budget: ${budgetText}`);
                 } catch (error) {
                     console.error(`❌ Error sending more collections message: ${error.message}`);
                 }
@@ -817,7 +820,7 @@ Thank you for your interest! 😊`);
                     console.log(`✅ Cleared timeout for ${jid} - more collections requested`);
                 }
                 
-            } else if (text === '2' || text.toLowerCase() === 'no' || text.toLowerCase() === 'n') {
+            } else if (text === '2' || text === 'no' || text === 'n') {
                 try {
                     await sendTextMessage(sock, jid, `Thank you for viewing our return gifts!
 
