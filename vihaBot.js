@@ -356,52 +356,8 @@ const sendProductImages = async (jid, folderName, budgetText) => {
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Special handling for Under ₹50 category
-        if (folderName === 'Gifts_Under50') {
-            await sendBestGiftsUnder50(jid, budgetText);
-            return;
-        }
-        
-        // Regular handling for other categories
-        const imagesFolder = path.join(__dirname, folderName);
-        
-        if (!fs.existsSync(imagesFolder)) {
-            console.log(`❌ Images folder not found: ${imagesFolder}`);
-            await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
-
-We have various beautiful return gift options ${budgetText}. Our team will contact you with the complete catalog and images.
-
-If you are interested in any of these products, please let us know.
-
-Our team will give you complete details. 😊`);
-            return;
-        }
-        
-        const imageFiles = fs.readdirSync(imagesFolder).filter(file => {
-            const ext = path.extname(file).toLowerCase();
-            return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
-        });
-
-        if (imageFiles.length === 0) {
-            console.log(`❌ No images found in ${folderName}`);
-            await sendTextMessage(sock, jid, `If you are interested in any of these products, please let us know.
-
-Our team will give you complete details. 😊`);
-            return;
-        }
-
-        // Send all available images with delays for other categories
-        for (let i = 0; i < imageFiles.length; i++) {
-            const imagePath = path.join(imagesFolder, imageFiles[i]);
-            await sendImageMessage(jid, imagePath);
-            await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
-        }
-
-        const finalMessage = `If you are interested in any of these products, please let us know.
-
-Our team will give you complete details. 😊`;
-
-        await sendTextMessage(sock, jid, finalMessage);
+        // Send best10 images for all categories
+        await sendBest10Images(jid, folderName, budgetText);
         
     } catch (error) {
         console.error('❌ Error in sendProductImages:', error);
@@ -419,10 +375,10 @@ Our team will give you complete details. 😊`);
 };
 
 // Special function for Under ₹50 gifts with batch approach
-const sendBestGiftsUnder50 = async (jid, budgetText) => {
+const sendBest10Images = async (jid, folderName, budgetText) => {
     try {
-        // First, send the best 10 images from best10 subfolder
-        const best10Folder = path.join(__dirname, 'Gifts_Under50', 'best10');
+        // First, try to send the best 10 images from best10 subfolder
+        const best10Folder = path.join(__dirname, folderName, 'best10');
         
         if (fs.existsSync(best10Folder)) {
             const best10Images = fs.readdirSync(best10Folder).filter(file => {
@@ -441,29 +397,57 @@ const sendBestGiftsUnder50 = async (jid, budgetText) => {
                     await new Promise(resolve => setTimeout(resolve, 1500));
                 }
 
-                // Ask if user wants to see more
-                await sendTextMessage(sock, jid, `📚 *Would you like to see our complete catalog with ALL gifts ${budgetText}?*
+                // Ask if user wants to see more collections
+                await sendTextMessage(sock, jid, `🎁 *Would you like to see more collections ${budgetText}?*
 
-Reply *YES* to receive the complete PDF catalog with all available options.
+━━━━━━━━━━━━━━━━━━━
+1️⃣ → YES - Show more collections
+2️⃣ → NO - These are sufficient
+━━━━━━━━━━━━━━━━━━━
 
-Or reply *NO* if these options are sufficient.`);
+Reply with *1, 2, YES* or *NO*`);
 
                 // Set user state to wait for more catalog response
                 userState[jid].waitingForCatalogResponse = true;
+                userState[jid].currentBudgetText = budgetText; // Store budget text for response
                 return;
             }
         }
         
         // Fallback: if best10 folder doesn't exist or is empty, send regular images
-        console.log('❌ Best10 folder not found or empty, falling back to regular images');
-        const mainFolder = path.join(__dirname, 'Gifts_Under50');
+        console.log(`❌ Best10 folder not found or empty for ${folderName}, falling back to regular images`);
+        const mainFolder = path.join(__dirname, folderName);
+        
+        if (!fs.existsSync(mainFolder)) {
+            console.log(`❌ Main folder not found: ${mainFolder}`);
+            await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
+
+We have various beautiful return gift options ${budgetText}. Our team will contact you shortly with complete details.
+
+Thank you for your interest! 😊`);
+            return;
+        }
+        
         const imageFiles = fs.readdirSync(mainFolder).filter(file => {
             const ext = path.extname(file).toLowerCase();
             return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
         });
 
+        if (imageFiles.length === 0) {
+            console.log(`❌ No images found in ${folderName}`);
+            await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
+
+We have various beautiful return gift options ${budgetText}. Our team will contact you shortly with complete details.
+
+Thank you for your interest! 😊`);
+            return;
+        }
+
         // Send first 10 images from main folder
         const imagesToSend = Math.min(imageFiles.length, 10);
+        await sendTextMessage(sock, jid, `✨ *Here are our best return gifts ${budgetText}:*`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         for (let i = 0; i < imagesToSend; i++) {
             const imagePath = path.join(mainFolder, imageFiles[i]);
             await sendImageMessage(jid, imagePath);
@@ -471,66 +455,29 @@ Or reply *NO* if these options are sufficient.`);
         }
 
         if (imageFiles.length > 10) {
-            await sendTextMessage(sock, jid, `📚 *Would you like to see our complete catalog with ALL gifts ${budgetText}?*
+            await sendTextMessage(sock, jid, `🎁 *Would you like to see more collections ${budgetText}?*
 
-Reply *YES* to receive the complete PDF catalog with all available options.
+━━━━━━━━━━━━━━━━━━━
+1️⃣ → YES - Show more collections
+2️⃣ → NO - These are sufficient
+━━━━━━━━━━━━━━━━━━━
 
-Or reply *NO* if these options are sufficient.`);
+Reply with *1, 2, YES* or *NO*`);
             userState[jid].waitingForCatalogResponse = true;
+            userState[jid].currentBudgetText = budgetText;
         } else {
-            await sendTextMessage(sock, jid, `If you are interested in any of these products, please let us know.
+            await sendTextMessage(sock, jid, `Thank you for viewing our return gifts ${budgetText}!
 
-Our team will give you complete details. 😊`);
-        }
-        
-    } catch (error) {
-        console.error('❌ Error in sendBestGiftsUnder50:', error);
-        await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
-
-We have various beautiful return gift options ${budgetText}. Our team will contact you with the complete catalog and images.
-
-If you are interested in any of these products, please let us know.
-
-Our team will give you complete details. 😊`);
-    }
-};
-
-// Function to send PDF catalog
-const sendPDFCatalog = async (jid) => {
-    try {
-        const pdfPath = path.join(__dirname, 'Gifts_Under50.pdf');
-        
-        if (!fs.existsSync(pdfPath)) {
-            console.log(`❌ PDF catalog not found: ${pdfPath}`);
-            await sendTextMessage(sock, jid, `📚 *Complete Catalog*
-
-Our team will send you the complete catalog with all gift options under ₹50 shortly.
+Our team will contact you shortly on your requirement.
 
 Thank you for your interest! 😊`);
-            return;
         }
-
-        const pdfBuffer = fs.readFileSync(pdfPath);
-        await sock.sendMessage(jid, {
-            document: pdfBuffer,
-            mimetype: 'application/pdf',
-            fileName: 'VihaCandlesAndGiftings_Under50_Catalog.pdf',
-            caption: `📚 *Complete Catalog - Gifts Under ₹50*
-
-Here's our complete catalog with all available return gift options under ₹50.
-
-If you are interested in any of these products, please let us know.
-
-Our team will give you complete details. 😊`
-        });
-        
-        console.log(`📄 Sent PDF catalog to ${jid}`);
         
     } catch (error) {
-        console.error('❌ Error sending PDF catalog:', error);
-        await sendTextMessage(sock, jid, `📚 *Complete Catalog*
+        console.error(`❌ Error in sendBest10Images for ${folderName}:`, error);
+        await sendTextMessage(sock, jid, `🎁 *Return Gifts ${budgetText}*
 
-Our team will send you the complete catalog with all gift options under ₹50 shortly.
+We have various beautiful return gift options ${budgetText}. Our team will contact you shortly with complete details.
 
 Thank you for your interest! 😊`);
     }
@@ -847,18 +794,16 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             }
         }
         else if (state.waitingForCatalogResponse) {
-            // Handle YES/NO response for catalog request
-            if (text === 'yes' || text === 'y') {
+            // Handle 1/2/YES/NO response for more collections request
+            if (text === '1' || text === 'yes' || text === 'y') {
                 try {
-                    await sendPDFCatalog(jid);
-                    console.log(`✅ Sent PDF catalog to ${jid}`);
-                } catch (error) {
-                    console.error(`❌ Error sending PDF catalog: ${error.message}`);
-                    await sendTextMessage(sock, jid, `📚 *Complete Catalog*
-
-Our team will send you the complete catalog with all gift options under ₹50 shortly.
+                    const budgetText = userState[jid].currentBudgetText || 'in your budget';
+                    await sendTextMessage(sock, jid, `✨ *Great! Our team will send you all collections ${budgetText} shortly.*
 
 Thank you for your interest! 😊`);
+                    console.log(`✅ Customer ${jid} requested more collections`);
+                } catch (error) {
+                    console.error(`❌ Error sending more collections message: ${error.message}`);
                 }
                 
                 // Reset the catalog response flag and mark conversation as completed
@@ -869,17 +814,17 @@ Thank you for your interest! 😊`);
                 if (userTimeouts[jid]) {
                     clearTimeout(userTimeouts[jid]);
                     userTimeouts[jid] = null;
-                    console.log(`✅ Cleared timeout for ${jid} - catalog sent`);
+                    console.log(`✅ Cleared timeout for ${jid} - more collections requested`);
                 }
                 
-            } else if (text === 'no' || text === 'n') {
+            } else if (text === '2' || text === 'no' || text === 'n') {
                 try {
-                    await sendTextMessage(sock, jid, `Thank you for your interest in our return gifts under ₹50!
+                    await sendTextMessage(sock, jid, `Thank you for viewing our return gifts!
 
-If you are interested in any of the products shown, please let us know.
+Our team will contact you shortly on your requirement.
 
-Our team will give you complete details. 😊`);
-                    console.log(`✅ Sent final message to ${jid} (declined catalog)`);
+Thank you for your interest! 😊`);
+                    console.log(`✅ Customer ${jid} declined more collections`);
                 } catch (error) {
                     console.error(`❌ Error sending final message: ${error.message}`);
                 }
@@ -892,13 +837,16 @@ Our team will give you complete details. 😊`);
                 if (userTimeouts[jid]) {
                     clearTimeout(userTimeouts[jid]);
                     userTimeouts[jid] = null;
-                    console.log(`✅ Cleared timeout for ${jid} - catalog declined`);
+                    console.log(`✅ Cleared timeout for ${jid} - collections declined`);
                 }
                 
             } else {
-                // Invalid response to catalog question
+                // Invalid response to collections question
                 try {
-                    await sendTextMessage(sock, jid, `Please reply with *YES* to receive the complete catalog or *NO* if the shown options are sufficient.`);
+                    await sendTextMessage(sock, jid, `❌ Please reply with *1, 2, YES* or *NO*
+
+1️⃣ → YES - Show more collections
+2️⃣ → NO - These are sufficient`);
                 } catch (error) {
                     console.error(`❌ Error sending catalog response instruction: ${error.message}`);
                 }
@@ -918,6 +866,9 @@ Our team will give you complete details. 😊`);
                 } else if (userState[jid].budget === '3') {
                     await sendProductImages(jid, 'Gifts_under150', 'under ₹150');
                     console.log(`✅ Sent product images (under ₹150) to ${jid}`);
+                } else if (userState[jid].budget === '4') {
+                    await sendProductImages(jid, 'Gifts_above150', 'above ₹150');
+                    console.log(`✅ Sent product images (above ₹150) to ${jid}`);
                 } else {
                     try {
                         const detailedSummary = generateDetailedSummary(userState[jid]);
