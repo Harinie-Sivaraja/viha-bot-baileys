@@ -794,7 +794,7 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         else if (state.waitingForCatalogResponse) {
             // Handle 1/2/YES/NO response for more collections request
             console.log(`🔍 Debug: Customer ${jid} replied "${text}" while waiting for catalog response`);
-            if (text === '1' || text === 'yes' || text === 'y') {
+            if (text.includes('1') || text.includes('yes') || text === 'y') {
                 try {
                     const budgetText = userState[jid].currentBudgetText || 'in your budget';
                     await sendTextMessage(sock, jid, `✨ *Great! Our team will send you all collections ${budgetText} shortly.*
@@ -816,7 +816,7 @@ Thank you for your interest! 😊`);
                     console.log(`✅ Cleared timeout for ${jid} - more collections requested`);
                 }
                 
-            } else if (text === '2' || text === 'no' || text === 'n') {
+            } else if (text.includes('2') || text.includes('no') || text === 'n') {
                 try {
                     await sendTextMessage(sock, jid, `Thank you for viewing our return gifts!
 
