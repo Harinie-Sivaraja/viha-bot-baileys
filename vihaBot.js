@@ -243,11 +243,11 @@ Reply with *1, 2, 3, 4* or *5*`,
 
     notInterested: `Shall we know why you have contacted us? Do you have any return gifts requirement? If so, you will get
 
-🎁 Get *FLAT ₹250 DISCOUNT* on your first purchase with us on 50 pieces MOQ.
+🎁 Get *FLAT ₹200 DISCOUNT* on your first purchase with us on 50 pieces MOQ.
 
 This offer is valid only till tomorrow
 
-If interested in above offer, please reply us. Our team will talk to you within 30 mins.`,
+If interested in above offer, please reply us. Our team will contact you within 30 mins.`,
 
     humanAgent: `We understand you may need personalized assistance. Our team will reach out to you shortly to help with your return gift requirements.
 
@@ -262,6 +262,31 @@ const errorMessages = {
 };
 
 // Helper functions
+// Set timeout for any step - 5 minutes timeout for all questions
+function setStepTimeout(jid, currentStep) {
+    // Clear any existing timeout for this user
+    if (userTimeouts[jid]) {
+        clearTimeout(userTimeouts[jid]);
+    }
+    
+    // Set a new timeout - 5 minutes (300000 ms)
+    userTimeouts[jid] = setTimeout(async () => {
+        // Check if the user is still in the same step
+        if (userState[jid] && userState[jid].step === currentStep) {
+            try {
+                console.log(`⏰ No response from ${jid} after 5 minutes on step: ${currentStep}. Deactivating bot.`);
+                await sendTextMessage(sock, jid, messages.notInterested);
+                console.log(`✅ Sent notInterested message to ${jid}`);
+                // Mark conversation as completed to stop further automated responses
+                userState[jid].step = 'completed';
+                console.log(`✅ Marked conversation as completed for ${jid} due to timeout on step: ${currentStep}`);
+            } catch (error) {
+                console.error(`❌ Error sending notInterested message: ${error.message}`);
+            }
+        }
+    }, 5 * 60 * 1000); // 5 minutes
+}
+
 async function sendTextMessage(sock, jid, text) {
     try {
         // Validate input parameters
@@ -663,25 +688,9 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                 await sendTextMessage(sock, jid, messages.quantity);
                 console.log(`✅ Sent quantity question to ${jid}`);
                 
-                // Set a timeout to send the notInterested message after 3 minutes if no response
-                // Clear any existing timeout for this user
-                if (userTimeouts[jid]) {
-                    clearTimeout(userTimeouts[jid]);
-                }
-                
-                // Set a new timeout - 3 minutes (180000 ms)
-                userTimeouts[jid] = setTimeout(async () => {
-                    // Check if the user is still in the first step
-                    if (userState[jid] && userState[jid].step === 'piece_count') {
-                        try {
-                            console.log(`⏰ No response from ${jid} after 3 minutes. Sending notInterested message.`);
-                            await sendTextMessage(sock, jid, messages.notInterested);
-                            console.log(`✅ Sent notInterested message to ${jid}`);
-                        } catch (error) {
-                            console.error(`❌ Error sending notInterested message: ${error.message}`);
-                        }
-                    }
-                }, 3 * 60 * 1000); // 3 minutes
+                // Set a timeout for the first question (piece_count)
+                setStepTimeout(jid, 'piece_count');
+                console.log(`⏰ Set 5-minute timeout for ${jid} on piece_count step`);
                 
             } catch (error) {
                 console.error(`❌ Error sending welcome message: ${error.message}`);
@@ -717,6 +726,12 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
             } else {
                 try {
                     await sendTextMessage(sock, jid, errorMessages[currentStep]);
+                    console.log(`✅ Sent error message to ${jid} for step: ${currentStep}`);
+                    
+                    // Set timeout after sending error message - if user doesn't respond in 5 minutes, deactivate bot
+                    setStepTimeout(jid, currentStep);
+                    console.log(`⏰ Set 5-minute timeout for ${jid} after invalid input on step: ${currentStep}`);
+                    
                 } catch (error) {
                     console.error(`❌ Error sending error message: ${error.message}`);
                 }
@@ -727,15 +742,28 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         // Conversation flow - Starting with piece_count (quantity) question
         if (state.step === 'function_time') {
             if (['1', '2', '3', '4'].includes(text)) {
+                // Clear timeout since user responded correctly
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                    userTimeouts[jid] = null;
+                    console.log(`✅ Cleared timeout for ${jid} - correct response on function_time`);
+                }
+                
                 userState[jid].step = 'budget';
                 userState[jid].timing = text;
                 try {
                     await sendTextMessage(sock, jid, messages.budget);
                     console.log(`✅ Sent budget message to ${jid}`);
+                    
+                    // Set timeout for budget question
+                    setStepTimeout(jid, 'budget');
+                    console.log(`⏰ Set 5-minute timeout for ${jid} on budget step`);
+                    
                 } catch (error) {
                     console.error(`❌ Error sending budget message: ${error.message}`);
                     // Fallback to a simple message if the template fails
                     await sendTextMessage(sock, jid, "What's your budget range? Reply with 1, 2, 3, 4 or 5");
+                    setStepTimeout(jid, 'budget');
                 }
             } else {
                 const ended = await handleInvalidInput('function_time');
@@ -744,15 +772,28 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         }
         else if (state.step === 'budget') {
             if (['1', '2', '3', '4'].includes(text)) {
+                // Clear timeout since user responded correctly
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                    userTimeouts[jid] = null;
+                    console.log(`✅ Cleared timeout for ${jid} - correct response on budget`);
+                }
+                
                 userState[jid].step = 'location';
                 userState[jid].budget = text;
                 try {
                     await sendTextMessage(sock, jid, messages.location);
                     console.log(`✅ Sent location message to ${jid}`);
+                    
+                    // Set timeout for location question
+                    setStepTimeout(jid, 'location');
+                    console.log(`⏰ Set 5-minute timeout for ${jid} on location step`);
+                    
                 } catch (error) {
                     console.error(`❌ Error sending location message: ${error.message}`);
                     // Fallback to a simple message if the template fails
                     await sendTextMessage(sock, jid, "Your delivery location please (City/Area)?");
+                    setStepTimeout(jid, 'location');
                 }
             } else {
                 const ended = await handleInvalidInput('budget');
@@ -773,20 +814,18 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                 try {
                     await sendTextMessage(sock, jid, messages.timing);
                     console.log(`✅ Sent timing message to ${jid}`);
+                    
+                    // Set timeout for timing question
+                    setStepTimeout(jid, 'function_time');
+                    console.log(`⏰ Set 5-minute timeout for ${jid} on function_time step`);
+                    
                 } catch (error) {
                     console.error(`❌ Error sending timing message: ${error.message}`);
                     // Fallback to a simple message if the template fails
                     await sendTextMessage(sock, jid, "When do you need the return gifts delivered? Reply with 1, 2, 3 or 4");
+                    setStepTimeout(jid, 'function_time');
                 }
             } else {
-                // Even for invalid responses, we should clear the timeout
-                // since the user has at least responded
-                if (userTimeouts[jid]) {
-                    clearTimeout(userTimeouts[jid]);
-                    userTimeouts[jid] = null;
-                    console.log(`✅ Cleared timeout for ${jid} - user responded with invalid input`);
-                }
-                
                 const ended = await handleInvalidInput('piece_count');
                 if (ended) return;
             }
@@ -866,6 +905,13 @@ Thank you! 😊`);
             return; // Don't process further
         }
         else if (state.step === 'location') {
+            // Clear timeout since user responded with location
+            if (userTimeouts[jid]) {
+                clearTimeout(userTimeouts[jid]);
+                userTimeouts[jid] = null;
+                console.log(`✅ Cleared timeout for ${jid} - location provided`);
+            }
+            
             userState[jid].location = messageText.trim();
             
             try {
