@@ -352,10 +352,6 @@ const sendProductImages = async (jid, folderName, budgetText) => {
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        await sendTextMessage(sock, jid, `🎁 *Here are our return gifts ${budgetText}:*`);
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         // Send best10 images for all categories
         await sendBest10Images(jid, folderName, budgetText);
         
