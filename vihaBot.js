@@ -201,7 +201,7 @@ let userTimeouts = {}; // Store timeout IDs for each user
 
 // Enhanced message templates
 const messages = {
-    welcome: `🎁 *Welcome to VihaCandlesAndGiftings!* 🎁
+    welcome: `*Welcome to VihaCandlesAndGiftings* 🙏
 
 To serve you better, please answer *4 quick questions* to get the product details.`,
 
