@@ -6,7 +6,7 @@ const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 const dotenv = require('dotenv');
 
-// Load environment variables
+// Load environment variables - updated
 dotenv.config();
 
 // Import Baileys
