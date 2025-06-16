@@ -795,7 +795,7 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
         }
         else if (state.waitingForCatalogResponse) {
             // Handle 1/2/YES/NO response for more collections request
-            if (text === '1' || text === 'yes' || text === 'y') {
+            if (text === '1' || text.toLowerCase() === 'yes' || text.toLowerCase() === 'y') {
                 try {
                     const budgetText = userState[jid].currentBudgetText || 'in your budget';
                     await sendTextMessage(sock, jid, `✨ *Great! Our team will send you all collections ${budgetText} shortly.*
@@ -817,7 +817,7 @@ Thank you for your interest! 😊`);
                     console.log(`✅ Cleared timeout for ${jid} - more collections requested`);
                 }
                 
-            } else if (text === '2' || text === 'no' || text === 'n') {
+            } else if (text === '2' || text.toLowerCase() === 'no' || text.toLowerCase() === 'n') {
                 try {
                     await sendTextMessage(sock, jid, `Thank you for viewing our return gifts!
 
@@ -841,14 +841,27 @@ Thank you for your interest! 😊`);
                 }
                 
             } else {
-                // Invalid response to collections question
+                // Invalid response to collections question - end conversation
                 try {
-                    await sendTextMessage(sock, jid, `❌ Please reply with *1, 2, YES* or *NO*
+                    await sendTextMessage(sock, jid, `Thank you for your interest!
 
-1️⃣ → YES - Show more collections
-2️⃣ → NO - These are sufficient`);
+Our team will contact you shortly on your requirement.
+
+Thank you! 😊`);
+                    console.log(`✅ Customer ${jid} gave invalid response - conversation ended`);
                 } catch (error) {
-                    console.error(`❌ Error sending catalog response instruction: ${error.message}`);
+                    console.error(`❌ Error sending team contact message: ${error.message}`);
+                }
+                
+                // Reset the catalog response flag and mark conversation as completed
+                userState[jid].waitingForCatalogResponse = false;
+                userState[jid].step = 'completed';
+                
+                // Clear any pending timeouts
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                    userTimeouts[jid] = null;
+                    console.log(`✅ Cleared timeout for ${jid} - invalid response, conversation ended`);
                 }
             }
             return; // Don't process further
