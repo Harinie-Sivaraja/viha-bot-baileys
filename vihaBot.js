@@ -912,16 +912,21 @@ Our team will talk to you. 😊`);
                 }
             }
             
-            userState[jid].step = 'completed';
-            
-            // Clear any pending timeouts when conversation is completed
-            if (userTimeouts[jid]) {
-                clearTimeout(userTimeouts[jid]);
-                userTimeouts[jid] = null;
-                console.log(`✅ Cleared timeout for ${jid} - conversation completed`);
+            // Only mark as completed if we're not waiting for catalog response
+            if (!userState[jid].waitingForCatalogResponse) {
+                userState[jid].step = 'completed';
+                
+                // Clear any pending timeouts when conversation is completed
+                if (userTimeouts[jid]) {
+                    clearTimeout(userTimeouts[jid]);
+                    userTimeouts[jid] = null;
+                    console.log(`✅ Cleared timeout for ${jid} - conversation completed`);
+                }
+                
+                console.log(`✅ Conversation completed for ${jid}`);
+            } else {
+                console.log(`🔄 Waiting for catalog response from ${jid}`);
             }
-            
-            console.log(`✅ Conversation completed for ${jid}`);
         }
         
     } catch (error) {
