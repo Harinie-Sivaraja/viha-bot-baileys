@@ -203,7 +203,7 @@ let userTimeouts = {}; // Store timeout IDs for each user
 const messages = {
     welcome: `*Welcome to VihaCandlesAndGiftings* 🙏
 
-To serve you better, please answer *4 quick questions* to get the product details.`,
+Hello mam, to serve you better, please answer *4 quick questions* to get the product details.`,
 
     timing: `⏰ *When do you need the return gifts delivered?*
 
