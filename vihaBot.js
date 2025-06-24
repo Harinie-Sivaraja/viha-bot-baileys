@@ -199,22 +199,45 @@ let userState = {};
 let humanOverride = {};
 let userTimeouts = {}; // Store timeout IDs for each user
 
+// Function to generate timing message with calculated dates
+const getTimingMessage = () => {
+    const today = new Date();
+    
+    // Calculate dates
+    const oneWeek = new Date(today);
+    oneWeek.setDate(today.getDate() + 7);
+    
+    const twoWeeks = new Date(today);
+    twoWeeks.setDate(today.getDate() + 14);
+    
+    const threeWeeks = new Date(today);
+    threeWeeks.setDate(today.getDate() + 21);
+    
+    // Format dates as DD/MM/YYYY
+    const formatDate = (date) => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+    
+    return `⏰ *When do you need the return gifts delivered?*
+
+━━━━━━━━━━━━━━━━━━━
+1️⃣ → Within 1 week (by ${formatDate(oneWeek)})
+2️⃣ → Within 2 weeks (by ${formatDate(twoWeeks)})
+3️⃣ → Within 3 weeks (by ${formatDate(threeWeeks)})
+4️⃣ → More than 3 weeks
+━━━━━━━━━━━━━━━━━━━
+
+Reply with *1, 2, 3* or *4*`;
+};
+
 // Enhanced message templates
 const messages = {
     welcome: `*Welcome to VihaCandlesAndGiftings* 🙏
 
 Hello mam, to serve you better, please answer *4 quick questions* to get the product details.`,
-
-    timing: `⏰ *When do you need the return gifts delivered?*
-
-━━━━━━━━━━━━━━━━━━━
-1️⃣ → Within 1 week
-2️⃣ → Within 2 weeks  
-3️⃣ → Within 3 weeks
-4️⃣ → More than 3 weeks
-━━━━━━━━━━━━━━━━━━━
-
-Reply with *1, 2, 3* or *4*`,
 
     budget: `💰 *What's your budget range?*
 
@@ -243,7 +266,7 @@ Reply with *1, 2, 3, 4* or *5*`,
 
     notInterested: `Shall we know why you have contacted us? Do you have any return gifts requirement? If so, you will get
 
-🎁 Get *FLAT ₹200 DISCOUNT* on your first purchase with us on 50 pieces MOQ.
+🎁 Get *FLAT ₹250 DISCOUNT* on your first purchase with us on 50 pieces MOQ.
 
 This offer is valid only till tomorrow
 
@@ -812,7 +835,7 @@ sock.ev.on('messages.upsert', async ({ messages: receivedMessages, type }) => {
                 userState[jid].quantity = text;
                 userState[jid].step = 'function_time';
                 try {
-                    await sendTextMessage(sock, jid, messages.timing);
+                    await sendTextMessage(sock, jid, getTimingMessage());
                     console.log(`✅ Sent timing message to ${jid}`);
                     
                     // Set timeout for timing question
