@@ -1007,6 +1007,7 @@ Our team will talk to you. 😊`);
 }
 
 // Start the bot
+// Dummy comment for commit
 console.log('🚀 Starting WhatsApp bot with Baileys...');
 initializeWhatsAppClient().catch(error => {
     console.error('❌ Failed to start bot:', error);
